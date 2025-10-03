@@ -364,6 +364,16 @@ app.get('/api/health', generalLimiter, (req, res) => {
   });
 });
 
+// Root health check for Render (no rate limiting for deployment health checks)
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    service: 'DevOps Compass Waitlist API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Waitlist submission endpoint with rate limiting
 app.post('/api/waitlist', apiLimiter, validateWaitlistData, async (req, res) => {
   try {
@@ -521,8 +531,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 API endpoint: http://localhost:${PORT}/api/waitlist`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
 });
