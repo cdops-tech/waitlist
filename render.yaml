@@ -1,0 +1,43 @@
+services:
+  # Backend API Service
+  - type: web
+    name: devops-compass-api
+    env: node
+    region: singapore  # or oregon, frankfurt
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false
+      - key: FIREBASE_AUTH_URI
+        sync: false
+      - key: FIREBASE_TOKEN_URI
+        sync: false
+      - key: FIREBASE_AUTH_PROVIDER_CERT_URL
+        sync: false
+      - key: FIREBASE_CLIENT_CERT_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://devops-compass.onrender.com
+    
+  # Frontend Static Site
+  - type: web
+    name: devops-compass-frontend
+    env: static
+    region: singapore
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://devops-compass-api.onrender.com

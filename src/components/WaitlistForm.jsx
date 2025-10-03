@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 
 const WaitlistForm = ({ onSuccess }) => {
+  // API URL for production deployment
+  const API_URL = import.meta.env.VITE_API_URL || '';
+
   const [formData, setFormData] = useState({
     email: '',
     preferredName: '',
@@ -123,7 +126,7 @@ const WaitlistForm = ({ onSuccess }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/waitlist', {
+      const response = await fetch(`${API_URL}/api/waitlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
