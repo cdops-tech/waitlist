@@ -50,21 +50,49 @@ app.use(cors({
 // 3. JSON payload size limit
 app.use(express.json({ limit: '10kb' }));
 
-// 4. Rate limiting for API endpoints
-const apiLimiter = rateLimit({
+// 4. Rate limiting - Dual approach for better protection and accessibility
+// IP-based rate limiter (protects against spam from same network/office)
+const ipLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 100 : 5, // Higher limit for testing in dev
+  max: process.env.NODE_ENV === 'development' ? 100 : 30, // 30 signups per IP (allows offices/co-working spaces)
   message: { 
-    error: 'Too many requests from this IP, please try again after 15 minutes.',
+    error: 'Too many signups from your network. Please try again in 15 minutes or use mobile data.',
     retryAfter: '15 minutes'
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Using default key generator (properly handles IPv4 and IPv6)
   handler: (req, res) => {
-    console.log(`⚠️  Rate limit exceeded for IP: ${req.ip}`);
+    console.log(`⚠️  IP rate limit exceeded for: ${req.ip}`);
     res.status(429).json({
-      error: 'Too many requests from this IP, please try again after 15 minutes.',
+      error: 'Too many signups from your network. Please try again in 15 minutes or use mobile data.',
       retryAfter: '15 minutes'
+    });
+  },
+});
+
+// Email-based rate limiter (prevents same person/email from spamming)
+const emailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Same email can only attempt 3 times per hour
+  message: {
+    error: 'This email has already been submitted recently. Please wait 1 hour to try again.',
+    retryAfter: '1 hour'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, _res) => {
+    // Rate limit by email (lowercase for consistency)
+    // Prefix with 'email:' to avoid any key collisions
+    const email = req.body.email?.toLowerCase();
+    return `email:${email}`;
+  },
+  skip: (req) => !req.body.email, // Skip entirely if no email in request
+  handler: (req, res) => {
+    console.log(`⚠️  Email rate limit exceeded for: ${req.body.email}`);
+    res.status(429).json({
+      error: 'This email has already been submitted recently. Please wait 1 hour to try again.',
+      retryAfter: '1 hour'
     });
   },
 });
@@ -379,8 +407,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Waitlist submission endpoint with rate limiting
-app.post('/api/waitlist', apiLimiter, validateWaitlistData, async (req, res) => {
+// Waitlist submission endpoint with dual rate limiting (IP + Email)
+app.post('/api/waitlist', ipLimiter, emailLimiter, validateWaitlistData, async (req, res) => {
   try {
     const { 
       email, preferredName, linkedinProfile, yearsOfExperience, employmentStatus,
